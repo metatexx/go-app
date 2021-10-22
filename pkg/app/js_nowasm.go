@@ -195,6 +195,10 @@ func (w *browserWindow) createElement(tag string) (Value, error) {
 	return value{}, nil
 }
 
+func (w *browserWindow) createElementNS(tag string, ns string) (Value, error) {
+	return value{}, nil
+}
+
 func (w *browserWindow) createTextNode(v string) Value {
 	return value{}
 }
