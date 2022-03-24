@@ -141,6 +141,10 @@ type Handler struct {
 	// - GOAPP_GOAPP_STATIC_RESOURCES_URL
 	Env Environment
 
+	// Used for Push Notifications
+	VAPIDPublicKey  string
+	VAPIDPrivateKey string
+
 	// The URLs that are launched in the app tab or window.
 	//
 	// By default, URLs with a different domain are launched in another tab.
@@ -362,11 +366,13 @@ func (h *Handler) makeAppJS() []byte {
 			Wasm               string
 			WorkerJS           string
 			AutoUpdateInterval int64
+			VAPIDPublicKey     string
 		}{
 			Env:                btos(env),
 			Wasm:               h.Resources.AppWASM(),
 			WorkerJS:           h.resolvePackagePath("/app-worker.js"),
 			AutoUpdateInterval: h.AutoUpdateInterval.Milliseconds(),
+			VAPIDPublicKey:     h.VAPIDPublicKey,
 		}); err != nil {
 		panic(errors.New("initializing app.js failed").Wrap(err))
 	}

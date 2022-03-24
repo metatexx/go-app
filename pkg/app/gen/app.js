@@ -4,6 +4,52 @@
 var goappOnUpdate = function () { };
 
 const autoUpdateInterval = {{.AutoUpdateInterval}};
+const vapidPublicKey = '{{.VAPIDPublicKey}}'
+var pushSubscription = null
+
+function subscribe() {
+  navigator.serviceWorker.ready
+      .then(function(registration) {
+        return registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+        });
+      })
+      .then(function(subscription) {
+        pushSubscription=subscription
+        fetch('/subscription?new', {
+          method: 'POST',
+          body: JSON.stringify(subscription),
+          headers: {
+            'content-type': 'application/json',
+          },
+        });
+        console.log(
+            JSON.stringify({
+              mode: "New subscription created",
+              vapidPublicKey: vapidPublicKey,
+              subscription: subscription,
+            })
+        );
+      })
+      .catch(err => console.error(err));
+}
+
+// Copied from the web-push documentation
+const urlBase64ToUint8Array = (base64String) => {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+      .replace(/-/g, '+')
+      .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+};
 
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker
@@ -14,7 +60,7 @@ if ("serviceWorker" in navigator) {
       reg.onupdatefound = function () {
         const installingWorker = reg.installing;
         installingWorker.onstatechange = function () {
-          if (installingWorker.state == "installed") {
+          if (installingWorker.state === "installed") {
             if (navigator.serviceWorker.controller) {
               goappOnUpdate();
             }
@@ -30,6 +76,34 @@ if ("serviceWorker" in navigator) {
     .catch(err => {
       console.error("offline service worker registration failed", err);
     });
+
+  if(vapidPublicKey!=="") {
+    navigator.serviceWorker.ready
+        .then(function (registration) {
+          return registration.pushManager.getSubscription();
+        })
+        .then(function (subscription) {
+          if (!subscription) {
+            subscribe();
+          } else {
+            // just "refreshing" the info on the server
+            fetch('/subscription?old', {
+              method: 'POST',
+              body: JSON.stringify(subscription),
+              headers: {
+                'content-type': 'application/json',
+              },
+            });
+            console.log(
+                JSON.stringify({
+                  mode: "Old subscription found",
+                  vapidPublicKey: vapidPublicKey,
+                  subscription: subscription,
+                })
+            );
+          }
+        });
+  }
 }
 
 // -----------------------------------------------------------------------------
